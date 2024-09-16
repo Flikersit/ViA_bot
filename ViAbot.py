@@ -47,7 +47,7 @@ def info(message):
         products(message)
     elif message.text in config.TO_MAIN_MENU_BUTTON:
         start(message)
-    elif message.text in config.CHANGE_LANGUAGE_TEXT:
+    elif message.text in config.AVAILABLE_LANGUAGE:
         final_change_language(message)
     else:
         bot.send_message(message.chat.id, 'Oh i cant do that(')
@@ -81,8 +81,15 @@ def products(message):
     markup.row(button_left, button_right)
     markup.row(button_to_menu)
 
+    available = ''
+
+    if config.AVAILABLE[i]:
+        available += '✅' + '       ' + config.AVAILABLE_TEXT[language]
+    else:
+        available += '❌' + '       ' + config.NOT_AVAILABLE_TEXT[language]
+
     with open(config.PICTURES_OF_COSTUME[i][0], 'rb') as photo:
-        bot.send_photo(message.chat.id, photo, caption=config.DESCRIPTION[i][language], reply_markup=markup)
+        bot.send_photo(message.chat.id, photo, caption=(config.DESCRIPTION[i][language] + '\n\n\n' + available), reply_markup=markup)
 
 
 def make_order(message):
@@ -101,15 +108,15 @@ def settings(message):
     markup.row(button_contact_administrator, button_contact_designer)
     markup.row(button_contact_developer)
 
-    bot.send_message(message.chat.id, config.SETTING_TEXT[language], reply_markup=markup)
+    bot.send_message(message.chat.id, config.SETTINGS_TEXT[language], reply_markup=markup)
 
 
-@bot.callback_query_handler(func=lambda callback=True)
-def callback_message(callback, message):
+@bot.callback_query_handler(func=lambda callback: True)
+def callback_message(callback):
     if callback.data == 'dev':
         webbrowser.open('https://t.me/flikersit')
     elif callback.data == 'language':
-        changelanguage(message)
+        changelanguage(callback.message)
 
 
 def changelanguage(message):
@@ -123,14 +130,16 @@ def changelanguage(message):
     markup.row(russian)
     markup.row(belarussian)
 
-    bot.send_message(message.chat.id, config.CHANGE_LANGUAGE_TEXT[language])
+    bot.send_message(message.chat.id, config.CHANGE_LANGUAGE_TEXT[language], reply_markup=markup)
 
 
 def final_change_language(message):
 
-    if message.txt == 'English':
+    global language
+
+    if message.text == 'English':
         language=1
-    elif message.txt == 'Русский':
+    elif message.text == 'Русский':
         language = 2
     else:
         language = 0
