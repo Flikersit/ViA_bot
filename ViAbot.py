@@ -1,5 +1,6 @@
 import telebot 
 from telebot import types
+from telebot.types import InputMediaPhoto
 import webbrowser
 import os
 
@@ -11,9 +12,8 @@ os.chdir(script_dir)
 
 bot = telebot.TeleBot(config.API_TOKEN)
 
-language = 0
-
-i = 0
+user_lang = {}
+user_i = {}
 
 
 buttons_language = {
@@ -25,6 +25,14 @@ buttons_language = {
 
 @bot.message_handler(commands=['start'])
 def start(message):
+    if message.from_user.id not in user_i:
+        user_i[message.from_user.id] = 0
+
+    if message.from_user.id not in user_lang:
+        user_lang[message.from_user.id] = 0
+
+    language = user_lang[message.from_user.id]
+
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     button1 = types.KeyboardButton(buttons_language['button1'][language])
     button2 = types.KeyboardButton(buttons_language['button2'][language])
@@ -54,23 +62,29 @@ def info(message):
 
 
 def products(message):
+    if message.from_user.id not in user_lang:
+        user_lang[message.from_user.id] = 0
 
-    global i
+    if message.from_user.id not in user_i:
+        user_i[message.from_user.id] = 0
+
 
     if message.text == '⬅️':
 
-        if i!=0:
-            i-=1
+        if user_i[message.from_user.id]!=0:
+            user_i[message.from_user.id]-=1
         else:
-            i=2
+            user_i[message.from_user.id]=2
 
     elif message.text == '➡️':
 
-        if i == config.NUMBER_OF_AVAILABLE_PRODUCTS - 1:
-            i=0
+        if user_i[message.from_user.id] == config.NUMBER_OF_AVAILABLE_PRODUCTS - 1:
+            user_i[message.from_user.id]=0
         else:
-            i+=1    
+            user_i[message.from_user.id]+=1
 
+    i = user_i[message.from_user.id]
+    language = user_lang[message.from_user.id]    
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 
@@ -88,14 +102,31 @@ def products(message):
     else:
         available += '❌' + '       ' + config.NOT_AVAILABLE_TEXT[language]
 
-    with open(config.PICTURES_OF_COSTUME[i][0], 'rb') as photo:
-        bot.send_photo(message.chat.id, photo, caption=(config.DESCRIPTION[i][language] + '\n\n\n' + available), reply_markup=markup)
+    media = []
+
+    for idx, photo_path in enumerate(config.PICTURES_OF_COSTUME[i]):
+         with open(photo_path, 'rb') as photo:
+            if idx == 0:
+                photo_bytes = photo.read()
+                # Добавляем подпись только к первой фотографии
+                media.append(InputMediaPhoto(photo_bytes, caption=(config.DESCRIPTION[i][language] + '\n\n\n' + available)))
+            else:
+                # Для остальных фотографий добавляем без подписи
+                media.append(InputMediaPhoto(photo_bytes))
+    
+    bot.send_media_group(message.chat.id, media)
+    bot.send_message(message.chat.id, config.SELECT_AN_ACTION[language], reply_markup=markup)
+
+    #with open(config.PICTURES_OF_COSTUME[i][0], 'rb') as photo:
+    #    bot.send_photo(message.chat.id, photo, caption=(config.DESCRIPTION[i][language] + '\n\n\n' + available), reply_markup=markup)
 
 
 def make_order(message):
     webbrowser.open('https://t.me/flikersit')
 
 def settings(message):
+
+    language = user_lang[message.from_user.id]
 
     markup = types.InlineKeyboardMarkup()
 
@@ -120,6 +151,12 @@ def callback_message(callback):
 
 
 def changelanguage(message):
+
+    if message.from_user.id not in user_lang:
+        user_lang[message.from_user.id] = 0
+
+    language = user_lang[message.from_user.id]
+
     markup = types.ReplyKeyboardMarkup()
 
     english = types.KeyboardButton('English')
@@ -135,14 +172,14 @@ def changelanguage(message):
 
 def final_change_language(message):
 
-    global language
-
     if message.text == 'English':
-        language=1
+        user_lang[message.from_user.id] = 1
     elif message.text == 'Русский':
-        language = 2
+        user_lang[message.from_user.id] = 2
     else:
-        language = 0
+        user_lang[message.from_user.id] = 0
+
+    language = user_lang[message.from_user.id]
 
     bot.send_message(message.chat.id, config.SUCCESS_CHANGE_LANGUAGE[language])
     
